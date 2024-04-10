@@ -18,10 +18,10 @@ class MonteCarlo():
         self.n_action = env.action_space.n
         self.Q_table = np.zeros([self.n_state, self.n_action])  # 初始化Q(s,a)表格
         self.alpha = LR  # 学习率
-        self.gamma = GAMMA  # 折扣因子
-        self.epsilon = EPSILON  # epsilon-贪婪策略中的参数
+        self.gamma = GAMMA  # 奖励折扣因子
+        self.epsilon = EPSILON  # 贪婪策略中的参数
         self.V = np.zeros(self.n_state)
-        self.samples = []
+        self.samples = []#存储样本
 
     def take_action(self, state):  # 选取下一步的操作,具体实现为epsilon-贪婪
         if np.random.random() < self.epsilon:
@@ -35,8 +35,9 @@ class MonteCarlo():
 
     def update(self):
         G_t = 0
-        for reward in reversed(self.samples):
-            state, action, reward, next_state, next_action = reward
+        #蒙特卡洛方法需要从每个回合（episode）的最后一个状态开始，反向计算每个状态的价值
+        for episode in reversed(self.samples):
+            state, action, reward, next_state, next_action = episode
             G_t = reward + self.gamma * self.Q_table[next_state, next_action] - self.Q_table[state, action]
             self.Q_table[state, action] += self.alpha * G_t
 
@@ -52,19 +53,19 @@ class MonteCarlo():
 
 
 def print_agent(agent, action_meaning):
-    print("策略：")
+    print("训练后策略如下：")
     for i in range(agent.env.n_height - 1, -1, -1):
         for j in range(agent.env.n_width):
-            # 一些特殊的状态,例如悬崖漫步中的悬崖
+            # 一些特殊的状态
             if agent.env._is_end_state(j, i):
-                print('EEEE', end=' ')
+                print('到终点了', end=' ')
             elif agent.env.grids.get_dtype(j, i) == 1:  # 墙
-                print('****', end=' ')
+                print('此路不通', end=' ')
             else:
                 a, cnt = agent.best_action(i * agent.env.n_width + j)
                 pi_str = ''
                 for k in range(len(action_meaning)):
-                    pi_str += action_meaning[k] if a[k] > 0 else 'o'
+                    pi_str += action_meaning[k] if a[k] > 0 else '无'
                 print(pi_str, end=' ')
         print()
 
@@ -75,19 +76,18 @@ if __name__ == "__main__":
     np.random.seed(0)
     agent = MonteCarlo(env)
 
-    num_episodes = 50000  # 智能体在环境中运行的序列的数量
+    num_episodes = 40000  
     for episode in range(num_episodes):
         state = env.reset()
         action = agent.take_action(state)
         done = False
         t = 0
         while not done and t < env.max_step:
-            # print("episode : ", episode)
             t += 1
             next_state, reward, done, info = env.step(action)
             next_action = agent.take_action(next_state)
             agent.save_sample(state, action, reward, next_state, next_action)
-            # print(state, action, reward, next_state, next_action)
+            print(state, action, reward, next_state, next_action)
             state = next_state
             action = next_action
             # print(done)
@@ -97,7 +97,7 @@ if __name__ == "__main__":
                 agent.samples.clear()
                 break
 
-    action_meaning = ['<', '>', '^', 'v']
+    action_meaning = ['左', '右', '上', '下']
     for i in range(agent.n_state):
         agent.V[i] = EPSILON * np.sum(agent.Q_table[i]) / agent.n_action + (1 - EPSILON) * np.max(agent.Q_table[i])
 

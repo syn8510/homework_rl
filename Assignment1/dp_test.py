@@ -66,12 +66,9 @@ class PolicyIteration:
                     reward = self.env.grids.get_reward(new_x, new_y)
                     done = self.env._is_end_state(new_x, new_y)
                     P[j * self.env.n_width + i][a] = [(1, state, reward, done)]
-        #print(P)
-        #print(P[0][1])
         return P
     #状态转移矩阵P的含义为，每个状态下的每个动作都有一个概率分布，这个概率分布是一个列表，列表中的每个元素是一个元组，元组的元素是（转移概率，下一个状态，奖励，是否结束）
     def policy_evaluation(self):
-        count = 1
         while True:
             delta = 0
             new_v = np.zeros(self.n_state)
@@ -88,8 +85,6 @@ class PolicyIteration:
             self.V = new_v
             if delta < EPSILON:
                 break
-            count += 1
-        print("策略评估进行%d轮后完成" % count)
 
     def policy_improvement(self):
         for s in range(self.n_state):
@@ -100,34 +95,28 @@ class PolicyIteration:
                     p, next_state, r, done = res
                     qsa += p * (r + GAMMA * self.V[next_state] * (1 - done))
                 qsa_list.append(qsa)
-            #print(qsa_list)
             maxq = max(qsa_list)
-            #print(maxq)
             cntq = qsa_list.count(maxq)  # 计算有几个动作得到了最大的Q值
-            #print(cntq)
             # 让这些动作均分概率
             self.pi[s] = [1 / cntq if q == maxq else 0 for q in qsa_list]
-        print("策略提升完成")
         return self.pi
 
     def policy_iteration(self):
         while True:
             self.policy_evaluation()
-            old_pi = self.pi.copy()  # 将列表进行深拷贝,方便接下来进行比较
+            old_pi = self.pi.copy()
             new_pi = self.policy_improvement()
             if (old_pi == new_pi).all():
-                print("策略已收敛")
                 break
 
 def print_agent(agent, action_meaning):
     print("最终收敛的策略如下所示：")
     for j in range(agent.env.n_height-1,-1,-1):
         for i in range(agent.env.n_width):
-            # 一些特殊的状态,例如终点和陷阱
             if agent.env._is_end_state(i,j):
                 print('到终点了', end=' ')
-            elif agent.env.grids.get_dtype(i, j) == 1:  # 墙
-                print('是一面墙', end=' ')
+            elif agent.env.grids.get_dtype(i, j) == 1: # 陷阱
+                print('此路不通', end=' ')
             else:
                 a = agent.pi[j * agent.env.n_width + i]
                 pi_str = ''
@@ -137,17 +126,17 @@ def print_agent(agent, action_meaning):
         print()
 
 if __name__ == "__main__":
-    print("采用策略迭代思想：")
+    print("采用策略迭代思想")
     env = MiniWorld()
     action_meaning = ['左', '右','上', '下', ]
     env.reset()
     agent = PolicyIteration(env)
     agent.policy_iteration()
+    print("V值如下：")
     for i in range(5,-1,-1):
         for j in range(6):
             print("%.4f" %(agent.V[i*6+j]),end='\t')
         print()
-    print(agent.V)
     print_agent(agent, action_meaning)
     env.update_r(agent.V)
     env.reset()

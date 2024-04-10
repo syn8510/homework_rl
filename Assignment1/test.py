@@ -12,3 +12,8 @@ for i in range(4):
 print(P)
 done = False
 print(1-False)
+print("*"*20)
+l = [1,2,3,4]
+r = l.reverse()
+#r = reversed(l)
+print(r)
